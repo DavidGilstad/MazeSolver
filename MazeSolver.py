@@ -21,3 +21,52 @@ walls = [[2,2],[2,3],[3,5],[4,3],[4,4]]
 min_steps = 10 # minimum number of steps from start to finish
 Rend, Rwall, Rdistance = 5, -1, 0.5 # reward values
 
+class TD_agent:
+    def __init__(self):
+        self.curr_loc = start # keep track of agent's location
+        self.v_values = np.zeros(width,height) # values of each state in the grid
+        self.actions = [self.left, self.right, self.up, self.down]
+    
+    # check what value is at state of next move
+    def getleft(self):
+        if self.curr_loc[0] == 0: return -1
+        else: return self.v_values[self.curr_loc[0]-1, self.curr_loc[1]]
+
+    def getright(self):
+        if self.curr_loc[0] == width: return -1
+        else: return self.v_values[self.curr_loc[0]+1, self.curr_loc[1]]
+
+    def getup(self):
+        if self.curr_loc[1] == height: return -1
+        else: return self.v_values[self.curr_loc[0], self.curr_loc[1]+1]
+
+    def getdown(self):
+        if self.curr_loc[1] == 0: return -1
+        else: return self.v_values[self.curr_loc[0], self.curr_loc[1]-1]
+
+    def left(self):
+        pass
+
+    def right(self):
+        pass
+
+    def up(self):
+        pass
+
+    def down(self):
+        pass
+
+    # determines the probability of going into the next state based on the value
+    # at that state already. gives higher probability to higher value states.
+    def action_probs(self, epsilon=0.1): # TODO: explain epsilon value choice
+        probs = [self.getleft(),self.getright(),self.getup(),self.getdown()]
+        probs = probs - min(probs) + epsilon
+        return probs / probs.sum()
+
+    
+
+# Really cool method!
+# np.random.choice picks name of method from actions using the given
+# probabilities, then the extra () at the end uses the name to call
+# that method!
+# reward, action_idx = np.random.choice(self.actions, p=action_probs)()

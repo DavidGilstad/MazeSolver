@@ -10,8 +10,10 @@
 #
 import numpy as np
 import math
+import matplotlib.pyplot as plt
+import cv2
 
-alpha, epsilon, gamma = 0.05, .2, 0.9 # TODO: Find out what are good values and explain in paper
+alpha, epsilon, gamma = 0.1, .1, 0.9 # TODO: Find out what are good values and explain in paper
 height = width = 6
 
 # locations of the following objects on the grid
@@ -20,15 +22,15 @@ end = [4,5]
 walls = [[2,2],[3,2],[5,3],[3,4],[4,4]]
 
 min_steps = 10 # minimum number of steps from start to finish
-Rend, Rwall, Rdistance = 5, -1, 0.5 # reward values
+Rend, Rwall, Rdistance = 10, -0.01, 0 # reward values
 l, r, u, d = [0,0,-1], [0,width-1,1], [1,0,-1], [1,height-1,1] # coordinate, boundary check, and shift
 
 class TD_agent:
     def __init__(self):
-        self.prev_loc, self.curr_loc = None, start # keep track of agent's location
+        self.prev_loc, self.curr_loc = None, list.copy(start) # keep track of agent's location
         self.v = np.zeros([width,height]) # values of each state in the grid
         self.actions = [l, r, u, d]
-        self.episode, self.start, self.end = 0, start, end
+        self.episode, self.start, self.end = 0, list.copy(start), list.copy(end)
     
     # get values at each state the agent can move to
     def getValues(self):
@@ -49,8 +51,7 @@ class TD_agent:
     def Rdist(self):
         #prev = (end[0]-self.prev_loc[0])^2 + (end[1]-self.prev_loc[1])^2
         curr = abs(end[0]-self.curr_loc[0])^2 + abs(end[1]-self.curr_loc[1])^2
-        return 0*curr
-
+        return Rdistance*curr
 
     #def TD(self):
     #    pi, pj, ni, nj = self.prev_loc[0], self.prev_loc[1], self.curr_loc[0], self.curr_loc[1]
@@ -93,21 +94,31 @@ class TD_agent:
         
     
 if __name__ == '__main__':
-    a, count = TD_agent(), 0
+    a, count, iters = TD_agent(), 0, 300
     
-    steps = 
-    while(a.episode < 100):
+    steps = np.linspace(0,0,iters)
+        
+    while(a.episode < iters):
         a.action()
         count += 1
-        if a.prev_loc == end:
+        if a.prev_loc == end or a.episode > iters*.8:
+            steps[a.episode-1] = count
             print(count,a.prev_loc,"->",a.curr_loc)
-            count = 0
-        
-    print("ended at:",a.curr_loc)
+        if a.prev_loc == end: count = 0
+
     for i in range(0,height):
         for j in range(0,width):
-            print(round(a.v[i][j],3),end='\t')
+            if [i,j] in walls:
+                print('w',round(a.v[i][j],2),end='\t')
+            elif [i,j] == end:
+                print('e',round(a.v[i][j],2),end='\t')
+            elif [i,j] == start:
+                print('s',round(a.v[i][j],2),end='\t')
+            else: print(0,round(a.v[i][j],2),end='\t')
         print()
+
+    plt.plot(np.linspace(1,iters,iters),steps)
+    plt.show()
     
 
  # TODO: idea to get rid of different actions	 

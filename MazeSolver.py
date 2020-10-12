@@ -15,9 +15,9 @@ alpha, epsilon, gamma = 0.05, .2, 0.9 # TODO: Find out what are good values and 
 height = width = 6
 
 # locations of the following objects on the grid
-start = [0,5]
-end = [5,4]
-walls = [[2,2],[2,3],[3,5],[4,3],[4,4]]
+start = [5,0]
+end = [4,5]
+walls = [[2,2],[3,2],[5,3],[3,4],[4,4]]
 
 min_steps = 10 # minimum number of steps from start to finish
 Rend, Rwall, Rdistance = 5, -1, 0.5 # reward values
@@ -28,6 +28,7 @@ class TD_agent:
         self.prev_loc, self.curr_loc = None, start # keep track of agent's location
         self.v = np.zeros([width,height]) # values of each state in the grid
         self.actions = [l, r, u, d]
+        self.episode, self.start, self.end = 0, start, end
     
     # get values at each state the agent can move to
     def getValues(self):
@@ -47,13 +48,17 @@ class TD_agent:
 
     def Rdist(self):
         #prev = (end[0]-self.prev_loc[0])^2 + (end[1]-self.prev_loc[1])^2
-        curr = (end[0]-self.curr_loc[0])^2 + (end[1]-self.curr_loc[1])^2
-        return -0.5*math.sqrt(curr)
+        curr = abs(end[0]-self.curr_loc[0])^2 + abs(end[1]-self.curr_loc[1])^2
+        return 0*curr
 
 
-    def TD(self):
-        pi, pj, ni, nj = self.prev_loc[0], self.prev_loc[1], self.curr_loc[0], self.curr_loc[1]
-        self.v[pi][pj] += alpha*(self.Rdist() + gamma*self.v[ni][nj] - self.v[pi][pj])
+    #def TD(self):
+    #    pi, pj, ni, nj = self.prev_loc[0], self.prev_loc[1], self.curr_loc[0], self.curr_loc[1]
+    #    self.v[pi][pj] += alpha*(self.Rdist() + gamma*self.v[ni][nj] - self.v[pi][pj])
+
+    def TD(self,p,r,c):
+        self.v[p[0]][p[1]] += alpha*(r + gamma*self.v[c[0]][c[1]] - self.v[p[0]][p[1]])
+
 
     # pick the action 
     def greedy(self):
@@ -77,22 +82,32 @@ class TD_agent:
         else: # do action
             self.prev_loc = list.copy(self.curr_loc) 
             self.curr_loc[self.actions[i][0]] += self.actions[i][2]
-            self.TD() # learn from the action taken
+            self.TD(self.prev_loc,self.Rdist(),self.curr_loc) # learn from the action taken
+            if self.curr_loc in walls: # check if we entered into a wall
+                self.prev_loc, self.curr_loc = list.copy(self.curr_loc), list.copy(self.prev_loc)
+                self.TD(self.prev_loc,Rwall,self.curr_loc)
+            elif self.curr_loc == self.end: # check for end of maze
+                self.episode += 1 # end of episode
+                self.curr_loc, self.prev_loc = list.copy(self.start), list.copy(end)
+                self.TD(self.end,Rend,self.curr_loc)
+        
     
 if __name__ == '__main__':
-    a, count, episodes = TD_agent(), 11, 0
+    a, count = TD_agent(), 0
     
-    while(episodes < 100):
-        count, episodes = 0, episodes + 1
-        a.curr_loc = [1,5]
-        while(a.curr_loc != end):
-            a.action()
-            count += 1
-        print(count,a.prev_loc,"->",a.curr_loc)
+    steps = 
+    while(a.episode < 100):
+        a.action()
+        count += 1
+        if a.prev_loc == end:
+            print(count,a.prev_loc,"->",a.curr_loc)
+            count = 0
         
     print("ended at:",a.curr_loc)
-    print("number of episodes:",episodes)
-    print(a.v)
+    for i in range(0,height):
+        for j in range(0,width):
+            print(round(a.v[i][j],3),end='\t')
+        print()
     
 
  # TODO: idea to get rid of different actions	 

@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import cv2
 
 # TODO: Find out what are good values and explain in paper
-alpha, epsilon, gamma = 0.9, .05, 0.9
+alpha, epsilon, gamma = 0.9, .2, 0.9
 height = width = 6
 
 # locations of the following objects on the grid
@@ -175,39 +175,35 @@ if __name__ == '__main__':
     y1 = np.linspace(0, 0, iters)  # track steps taken at each episode
     y2 = np.linspace(0, 0, iters)
 
-    for experiments in range(0, 10):
-        td, sarsa = TD_agent(), SARSA_agent()
+    for experiments in range(0, 50):
+        td, sarsa = TD_agent(0.8), SARSA_agent()
         while(td.episode < iters):
             td.action()
             if td.prev_loc == end:
-                y1[td.episode-1] += td.count/30
+                y1[td.episode-1] += td.count/50
                 print(td.count, td.prev_loc, "->", td.curr_loc)
 
-        while(sarsa.episode < iters):
-            sarsa.action()
+        while(sarsa.episode > iters):
+            # sarsa.action()
             if sarsa.prev_loc == [4, 5] and sarsa.curr_loc == start:
-                y2[sarsa.episode-1] += sarsa.count/30
+                y2[sarsa.episode-1] += sarsa.count/50
                 print(experiments,sarsa.count)
 
     x = np.linspace(1, iters, iters)
     fig, ax = plt.subplots()
-    ax.plot(x, y1, 'r', label='TD learning')
-    ax.plot(x, y2, 'b', label='SARSA')
+    ax.plot(x, y1, 'g', label='TD-learning')
+    #ax.plot(x, y2, 'b', label='SARSA')
 
-    fig.suptitle("Average after 30 experiments")
+    fig.suptitle("TD(lambda) average after 50 experiments")
     legend = ax.legend(loc='upper right', fontsize='x-large')
     plt.show()
 
     for i in range(0, height):
         for j in range(0, width):
-            if [i, j] in walls:
-                state = 'w'
-            elif [i, j] == end:
-                state = 'e'
-            elif [i, j] == start:
-                state = 's'
-            else:
-                state = '[]'
+            if [i, j] in walls: state = 'w'
+            elif [i, j] == end: state = 'e'
+            elif [i, j] == start: state = 's'
+            else: state = '[]'
             print(state, round(td.v[i][j], 2), end='\t')
         print()
 
@@ -220,15 +216,11 @@ if __name__ == '__main__':
 
     for i in range(0, height):
         for j in range(0, width):
-            if [i, j] in walls:
-                state = 'w'
-            elif [i, j] == end:
-                state = 'e'
-            elif [i, j] == start:
-                state = 's'
-            else:
-                state = '[]'
-            # print(state,round(a.q[i][j],2),end='\t')
+            if [i, j] in walls: state = 'w'
+            elif [i, j] == end: state = 'e'
+            elif [i, j] == start: state = 's'
+            else: state = '[]'
+            #print(state,round(a.q[i][j],2),end='\t')
             m = direc(i,j)
             print(state, m, end='\t')
         print()

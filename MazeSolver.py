@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import cv2
 
 # TODO: Find out what are good values and explain in paper
-alpha, epsilon, gamma = 0.9, .01, 0.9
+alpha, epsilon, gamma = 0.9, .05, 0.9
 height = width = 6
 
 # locations of the following objects on the grid
@@ -24,18 +24,18 @@ walls = [[2, 2], [3, 2], [3, 4], [5, 3], [4, 4]]
 
 min_steps = 10  # minimum number of steps from start to finish
 Rend, Rwall = 10, -0.01  # reward values
-l, r, u, d = [0, 0, -1], [0, width-1, 1], [1, 0, -1], [1,
-                                                       height-1, 1]  # coordinate, boundary check, shift
-
+l, r, u, d = [0, 0, -1], [0, width-1, 1], [1, 0, -1], [1,height-1, 1]  # coordinate, boundary check, shift
 
 class TD_agent:
-    def __init__(self):
+    def __init__(self, lamda=0):
         self.prev_loc, self.curr_loc = None, list.copy(
             start)  # keep track of agent's location
         self.v = np.zeros([width, height])  # values of each state in the grid
+        self.e = np.zeros([width, height]) # eligibility traces
         self.actions = [l, r, u, d]
-        self.episode, self.start, self.end = 0, list.copy(
-            start), list.copy(end)
+        self.episode, self.start, self.end = 0, list.copy(start), list.copy(end)
+        self.count = 0
+        self.lamda = lamda
 
     # get values at each state the agent can move to
     def getValues(self):
@@ -53,11 +53,13 @@ class TD_agent:
 
     def vval(self, loc): return self.v[loc[0]][loc[1]]
 
-    def TD(self, p, r, c):
-        self.v[p[0]][p[1]] += alpha * \
-            (r + gamma*self.v[c[0]][c[1]] - self.v[p[0]][p[1]])
-
-    # pick the action
+    def TD(self, p, r, c, lamda):
+        delta = r + gamma*self.vval(c) - self.vval(p) # get delta
+        self.e[p[0]][p[1]] += 1 # update eligibility trace
+        for i in range(0,height):
+            for j in range(0,width):
+                self.v[i][j] += alpha*delta*self.e[i][j]
+                self.e[i][j] = self.e[i][j]*gamma*lamda
 
     def greedy(self):
         values = self.getValues()  # get all the surrounding state values
@@ -75,28 +77,28 @@ class TD_agent:
     # choose an action greedily, i.e. the max value action with probability
     # 1-epsilon, and a random action with probability epsilon
     def action(self):
-        i = np.random.choice([self.greedy(), self.explore()], p=[
-                             1-epsilon, epsilon])  # pick action
+        if self.prev_loc == end:
+            self.count = 1
+        else: self.count += 1
+
+        i = np.random.choice([self.greedy(), self.explore()], p=[1-epsilon, epsilon])  # pick action
 
         # check for boundary violation, try different action if so
-        if self.curr_loc[self.actions[i][0]
-                         ] == self.actions[i][1]:
-            self.action()
+        if self.curr_loc[self.actions[i][0]] == self.actions[i][1]: self.action()
         else:  # do action
             self.prev_loc = list.copy(self.curr_loc)
             self.curr_loc[self.actions[i][0]] += self.actions[i][2]
             # learn from the action taken
-            self.TD(self.prev_loc, 0, self.curr_loc)
+            self.TD(self.prev_loc, 0, self.curr_loc, self.lamda)
             if self.curr_loc in walls:  # check if we entered into a wall
                 self.prev_loc, self.curr_loc = list.copy(
                     self.curr_loc), list.copy(self.prev_loc)
-                self.TD(self.prev_loc, Rwall, self.curr_loc)
+                self.TD(self.prev_loc, Rwall, self.curr_loc, 0.8)
             elif self.curr_loc == self.end:  # check for end of maze
                 self.episode += 1  # end of episode
                 self.curr_loc, self.prev_loc = list.copy(
                     self.start), list.copy(end)
-                self.TD(self.end, Rend, self.curr_loc)
-
+                self.TD(self.end, Rend, self.curr_loc, 0.8)
 
 class SARSA_agent:
     def __init__(self):
@@ -110,6 +112,7 @@ class SARSA_agent:
         self.episode, self.start, self.end = 0, list.copy(
             start), list.copy(end)
         self.reward = 0
+        self.count = 0
 
     def qvals(self, loc): return self.q[loc[0]][loc[1]]
 
@@ -132,6 +135,10 @@ class SARSA_agent:
         return np.random.choice([0, 1, 2, 3])
 
     def action(self):
+        if sarsa.prev_loc == [4, 5] and sarsa.curr_loc == start:
+            self.count = 1
+        else: self.count += 1
+
         # select an action
         i = self.curr_a = np.random.choice(
             [self.greedy(), self.explore()], p=[1-epsilon, epsilon])
@@ -164,36 +171,30 @@ class SARSA_agent:
 
 
 if __name__ == '__main__':
+    iters = 300
+    y1 = np.linspace(0, 0, iters)  # track steps taken at each episode
+    y2 = np.linspace(0, 0, iters)
 
-    for experiments in range(0, 30):
-        td, sarsa, count, iters = TD_agent(), SARSA_agent(), 0, 200
-        y1 = np.linspace(0, 0, iters)  # track steps taken at each episode
-        y2 = np.linspace(0, 0, iters)
+    for experiments in range(0, 10):
+        td, sarsa = TD_agent(), SARSA_agent()
         while(td.episode < iters):
             td.action()
-            count += 1
             if td.prev_loc == end:
-                y1[td.episode-1] += count
-                #print(count, td.prev_loc, "->", td.curr_loc)
-                count = 0
-            elif count > 10000:
-                count = 10000
+                y1[td.episode-1] += td.count/30
+                print(td.count, td.prev_loc, "->", td.curr_loc)
 
         while(sarsa.episode < iters):
             sarsa.action()
-            count += 1
             if sarsa.prev_loc == [4, 5] and sarsa.curr_loc == start:
-                y2[sarsa.episode-1] += count
-                count = 0
-                #print(".")
-            elif count > 10000:
-                count = 10000
+                y2[sarsa.episode-1] += sarsa.count/30
+                print(experiments,sarsa.count)
 
     x = np.linspace(1, iters, iters)
     fig, ax = plt.subplots()
     ax.plot(x, y1, 'r', label='TD learning')
     ax.plot(x, y2, 'b', label='SARSA')
 
+    fig.suptitle("Average after 30 experiments")
     legend = ax.legend(loc='upper right', fontsize='x-large')
     plt.show()
 
@@ -210,6 +211,13 @@ if __name__ == '__main__':
             print(state, round(td.v[i][j], 2), end='\t')
         print()
 
+    def direc(i,j):
+        if sarsa.q[i][j][0] == np.max(sarsa.q[i][j]): return 'U'
+        elif sarsa.q[i][j][1] == np.max(sarsa.q[i][j]): return 'D'
+        elif sarsa.q[i][j][2] == np.max(sarsa.q[i][j]): return 'L'
+        elif sarsa.q[i][j][3] == np.max(sarsa.q[i][j]): return 'R'
+        else: return 'X'
+
     for i in range(0, height):
         for j in range(0, width):
             if [i, j] in walls:
@@ -221,5 +229,6 @@ if __name__ == '__main__':
             else:
                 state = '[]'
             # print(state,round(a.q[i][j],2),end='\t')
-            print(state, round(np.max(sarsa.q[i][j]), 1), end='\t')
+            m = direc(i,j)
+            print(state, m, end='\t')
         print()
